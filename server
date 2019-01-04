@@ -1,0 +1,236 @@
+package project9;
+
+import java.io.*;
+import java.lang.reflect.Array;
+import java.net.*;
+
+public class MyServer1 {
+
+	public static void main(String[] args) {
+		RPS rps = new RPS();
+		Thread ts = new Thread(new TCPserver(rps));
+		Thread us = new Thread(new UDPserver(rps));
+		ts.start();
+		us.start();
+		synchronized (rps) {// 隐含锁
+			try {
+				for (int i = 4; i > 0; i--) {
+					while (!rps.isAOk() || !rps.isBOk()) {
+						rps.wait();
+					}
+					// 比较得分
+					if (rps.getaSelection() == 1 && rps.getbSelection() == 2)
+						rps.setbPoint(rps.getbPoint() + 2);
+					if (rps.getaSelection() == 1 && rps.getbSelection() == 3)
+						rps.setaPoint(rps.getaPoint() + 2);
+					if (rps.getaSelection() == 2 && rps.getbSelection() == 3)
+						rps.setbPoint(rps.getbPoint() + 2);
+					if (rps.getaSelection() == 2 && rps.getbSelection() == 1)
+						rps.setaPoint(rps.getaPoint() + 2);
+					if (rps.getaSelection() == 3 && rps.getbSelection() == 2)
+						rps.setaPoint(rps.getaPoint() + 2);
+					if (rps.getaSelection() == 3 && rps.getbSelection() == 1)
+						rps.setbPoint(rps.getbPoint() + 2);
+					if (rps.getaSelection() == 1 && rps.getbSelection() == 1) {
+						rps.setbPoint(rps.getbPoint() + 1);
+						rps.setaPoint(rps.getaPoint() + 1);
+					}
+					if (rps.getaSelection() == 2 && rps.getbSelection() == 2) {
+						rps.setbPoint(rps.getbPoint() + 1);
+						rps.setaPoint(rps.getaPoint() + 1);
+					}
+					if (rps.getaSelection() == 3 && rps.getbSelection() == 3) {
+						rps.setbPoint(rps.getbPoint() + 1);
+						rps.setaPoint(rps.getaPoint() + 1);
+					}
+
+					System.out.println(rps.getaSleep() + "\t" + rps.getaSelection() + "\t" + rps.getbSleep() + "\t"
+							+ rps.getbSelection());
+					rps.setAOk(false);
+					rps.setBOk(false);
+					rps.notifyAll();
+				} // end for循环
+
+			} catch (InterruptedException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+			
+		}//end suo
+		
+	}// end main
+
+}// end My server
+
+class TCPserver implements Runnable {// KidA
+	private Socket socket = null;
+	private DataInputStream in = null;
+	private DataOutputStream out = null;
+	private RPS rps = null;
+
+	public TCPserver(RPS rps) {
+		this.rps = rps;
+	}
+
+	@Override
+	public void run() {
+		// TODO 自动生成的方法存根
+		try (ServerSocket ss = new ServerSocket(6666)) {
+			socket = ss.accept();
+			in = new DataInputStream(socket.getInputStream());
+			out = new DataOutputStream(socket.getOutputStream());
+			// 循环线程
+			// read sleep time , Selection
+			synchronized (rps) {// 隐含锁
+				rps.setaSleep(in.readInt());
+				rps.setaSelection(in.readInt());
+
+				rps.setAOk(true);
+				rps.notifyAll();
+				while (rps.isAOk() == true) {
+					rps.wait();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				socket.close();
+				in.close();
+				out.close();
+			} catch (IOException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+		}
+	}// end run
+
+}
+
+class UDPserver implements Runnable {// KidB
+	private RPS rps = null;
+	private ByteArrayInputStream bis = null;
+	private DataInputStream dis = null;
+
+	public UDPserver(RPS rps) {
+		this.rps = rps;
+	}
+
+	@Override
+	public void run() {
+		// TODO 自动生成的方法存根
+		try (DatagramSocket ds = new DatagramSocket(7777);) {
+			// 循环
+			for (int i = 4; i > 0; i--) {
+				byte[] buf = new byte[128];
+				Array.setByte(buf, 0, (byte) 0);
+				DatagramPacket rcvPkt = new DatagramPacket(buf, buf.length);
+				ds.receive(rcvPkt);
+
+				bis = new ByteArrayInputStream(buf);
+				dis = new DataInputStream(bis);
+
+				synchronized (rps) {// 隐含锁
+					rps.setbSleep(dis.readInt());
+					rps.setbSelection(dis.readInt());
+
+					rps.setBOk(true);
+					rps.notifyAll();
+					while (rps.isBOk()) {
+						rps.wait();
+					}
+				}
+				dis.close();
+				bis.close();// 有依赖关系，关闭的顺序有讲究
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				dis.close();
+				bis.close();
+			} catch (IOException e) {
+				// TODO 自动生成的 catch 块
+				e.printStackTrace();
+			}
+
+		}
+	}
+
+}
+
+class RPS {// Rock(1)/Paper(2)/Scissors(3)
+	private int aSelection = 0;
+	private int bSelection = 0;
+	private int aSleep = 0;
+	private int bSleep = 0;
+	private boolean isAOk = false;
+	private boolean isBOk = false;
+	private int aPoint = 0;
+	private int bPoint = 0;
+
+	public int getaSelection() {
+		return aSelection;
+	}
+
+	public void setaSelection(int aSelection) {
+		this.aSelection = aSelection;
+	}
+
+	public int getbSelection() {
+		return bSelection;
+	}
+
+	public void setbSelection(int bSelection) {
+		this.bSelection = bSelection;
+	}
+
+	public int getaSleep() {
+		return aSleep;
+	}
+
+	public void setaSleep(int aSleep) {
+		this.aSleep = aSleep;
+	}
+
+	public int getbSleep() {
+		return bSleep;
+	}
+
+	public void setbSleep(int bSleep) {
+		this.bSleep = bSleep;
+	}
+
+	public boolean isAOk() {
+		return isAOk;
+	}
+
+	public void setAOk(boolean isAOk) {
+		this.isAOk = isAOk;
+	}
+
+	public boolean isBOk() {
+		return isBOk;
+	}
+
+	public void setBOk(boolean isBOk) {
+		this.isBOk = isBOk;
+	}
+
+	public int getaPoint() {
+		return aPoint;
+	}
+
+	public void setaPoint(int aPoint) {
+		this.aPoint = aPoint;
+	}
+
+	public int getbPoint() {
+		return bPoint;
+	}
+
+	public void setbPoint(int bPoint) {
+		this.bPoint = bPoint;
+	}
+
+}

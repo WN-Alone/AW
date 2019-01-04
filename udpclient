@@ -1,0 +1,51 @@
+package project9;
+
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.util.Arrays;
+import java.util.Scanner;
+
+public class MyUDPclient {
+
+	public static void main(String[] args) {
+		// TODO 自动生成的方法存根
+        
+		byte[] buf = new byte[128];
+		InetAddress server;
+		DatagramPacket sndPkt;
+		DatagramPacket rcvPkt;
+		
+		try(DatagramSocket socket = new DatagramSocket()){
+        	server =  InetAddress.getByName("localhost");
+        	sndPkt = new DatagramPacket(buf,buf.length);
+        	sndPkt.setAddress(server);
+        	sndPkt.setPort(7777);
+        	
+        	System.out.println("Please input radius : ");
+        	Scanner scanner = new Scanner(System.in);
+        	int r = scanner.nextInt();
+        	
+        	Arrays.fill(buf, (byte)0);
+        	buf = Integer.valueOf(r).toString().getBytes();
+        	sndPkt.setData(buf);     	
+        	socket.send(sndPkt);
+        	
+        	buf = new byte[128];
+        	rcvPkt = new DatagramPacket(buf,buf.length);//==rcvPkt.setData(buf);
+        	socket.receive(rcvPkt);
+        	
+        	//int area = Integer.parseInt(new String(buf).trim());
+        	
+        	System.out.println("Radius is " + r + "\n");
+        	//System.out.println("Area received from the server is " + area +"\n");
+        	
+        	scanner.close();
+        }
+        catch(IOException ex) {
+        	ex.printStackTrace();
+        }
+	}
+
+}
